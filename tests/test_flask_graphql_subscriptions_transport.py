@@ -79,9 +79,9 @@ def basic_ss():
     setup_functions = {}
     namespace='/foo'
     on_subscribe=lambda parsed_message, base_params: base_params
-    on_unsubscribe=lambda: True
-    on_connect=lambda: True
-    on_disconnect=lambda: True
+    on_unsubscribe=lambda *args, **kwargs: True
+    on_connect=lambda *args, **kwargs: True
+    on_disconnect=lambda *args, **kwargs: True
     parse_context=lambda *args, **kwargs: True
     sub_manager = SubscriptionManager(
         schema,
@@ -245,45 +245,196 @@ def test_callback_added_to_base_params(basic_ss):
     ss.subscription_manager.subscribe.assert_called_once()
     assert ss.subscription_manager.subscribe.call_args[1].get('callback', None) != None
 
-def test_adds_unique_sub_id_to_subscriptions():
-    pass
+def test_adds_unique_sub_id_to_subscriptions(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'id': 1,
+                                 'query': 'query test{ testString }',
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    # get first item
+    for key, val in ss.connection_subscriptions.items():
+        first_key = key
+        first_sub = ss.connection_subscriptions[key]
+    del ss.connection_subscriptions[first_key]
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'bar',
+                                 'id': 2,
+                                 'query': 'query test{ testString }',
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    # get second item
+    for key, val in ss.connection_subscriptions.items():
+        second_sub = ss.connection_subscriptions[key]
+    assert first_sub != second_sub
 
-def test_sends_subscription_success():
-    pass
+def test_sends_subscription_success(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.send_subscription_success = Mock()
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'query': 'query test{ testString }',
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    ss.send_subscription_success.assert_called_once()
 
-def test_sends_subscription_failure_on_any_uncaught_errors():
-    pass
+def test_sends_subscription_failure_on_unknown_message_type(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.send_subscription_fail = Mock()
+    test_client.emit('message',
+                     json.dumps({'type': 'unknown message type',
+                                 'payload': 'foo',
+                                 'query': 'query test{ testString }',
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    ss.send_subscription_fail.assert_called_once()
+    assert ss.send_subscription_fail.call_args[0][1] == {'errors': 'Invalid message type'}
+
+def test_sends_subscription_failure_on_bad_query(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.send_subscription_fail = Mock()
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'query': 'query test{ unknownField }',
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    ss.send_subscription_fail.assert_called_once()
+
+def test_sends_subscription_failure_on_missing_parameters(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.send_subscription_fail = Mock()
+    # not sending a variables param
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'query': 'query test{ testString }'}),
+                     namespace=ss.namespace)
+    ss.send_subscription_fail.assert_called_once()
 
 ###
 # SUBSCRIPTION_END testing
 ###
-def test_calls_unsubscribes():
-    pass
+def test_calls_unsubscribe(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.unsubscribe = Mock()
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'id': 1,
+                                 'query': 'query test{ testString }',
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_END,
+                                 'payload': 'foo',
+                                 'id': 1,}),
+                     namespace=ss.namespace)
+    ss.unsubscribe.assert_called_once()
 
-def test_removes_subscription_id():
-    pass
+def test_removes_subscription_id(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    assert len(ss.connection_subscriptions) == 0
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'id': 1,
+                                 'query': 'query test{ testString }',
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    assert len(ss.connection_subscriptions) == 1
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_END,
+                                 'payload': 'foo',
+                                 'id': 1,}),
+                     namespace=ss.namespace)
+    assert len(ss.connection_subscriptions) == 0
 
 ###
 # sending testing
 ###
 # should send the appropriate data to the relevant client
-def test_send_sub_data():
-    pass
+def test_send_sub_data(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'id': 1,
+                                 'query': 'query test{ testString }',
+                                 'variables': {'some': 'vars'}}),
+                     namespace=ss.namespace)
+    ss.send_subscription_data = Mock()
+    ss.subscription_manager.pubsub.publish('testString', {'foo': 'bar'})
+    ss.send_subscription_data.assert_called_once()
+    # should return what we expect based on our schema
+    assert ss.send_subscription_data.call_args[0][1] == {'data':
+        {'testString': 'string returned'}}
 
 # should notify the client of subscription failure
-def test_send_sub_fail():
-    pass
+def test_send_sub_fail(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.send_subscription_fail = Mock()
+    # not sending a query param
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'id': 1,
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    ss.send_subscription_fail.assert_called_once()
 
 # should notify the client of subscription success
-def test_send_sub_success():
-    pass
-
-# should send the init result to the client
-def test_send_init_result():
-    pass
+def test_send_sub_success(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.send_subscription_success = Mock()
+    test_client.emit('message',
+                     json.dumps({'type': SUBSCRIPTION_START,
+                                 'payload': 'foo',
+                                 'id': 1,
+                                 'query': 'query test{ testString }',
+                                 'variables': 'baz'}),
+                     namespace=ss.namespace)
+    ss.send_subscription_success.assert_called_once()
 
 ###
-# general testing
+# INIT testing
 ###
-def test_fails_on_unknown_message_type():
-    pass
+
+def test_send_init_success(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.send_init_result = Mock()
+    test_client.emit('message',
+                     json.dumps({'type': INIT,
+                                 'id': 1,
+                                 'payload': 'foo',}),
+                     namespace=ss.namespace)
+    ss.send_init_result.assert_called_once()
+    assert ss.send_init_result.call_args[0][0] == INIT_SUCCESS
+
+def test_send_init_fail(basic_ss):
+    app, ss = basic_ss
+    test_client = SocketIOTestClient(app, ss.socketio, namespace=ss.namespace)
+    ss.send_init_result = Mock()
+    ss.on_connect = Mock(return_value=False)
+    test_client.emit('message',
+                     json.dumps({'type': INIT,
+                                 'id': 1,
+                                 'payload': 'foo',}),
+                     namespace=ss.namespace)
+    ss.send_init_result.assert_called_once()
+    assert ss.send_init_result.call_args[0][0] == INIT_FAIL

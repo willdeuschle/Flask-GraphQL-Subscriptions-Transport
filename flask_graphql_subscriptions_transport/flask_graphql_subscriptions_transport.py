@@ -129,21 +129,27 @@ class SubscriptionServer(object):
 
         # SUBSCRIPTION_START case
         elif parsed_message['type'] == SUBSCRIPTION_START:
-            # gain general context from request if specified
-            context = {}
-            if self.parse_context:
-                context = self.parse_context(request)
+            try:
+                context = {}
+                # gain general context from request if specified
+                if self.parse_context:
+                    context = self.parse_context(request)
 
-            # query and variables required
-            base_params = {
-                 'query': parsed_message['query'],
-                 'variables': parsed_message['variables'],
-                 'operation_name': parsed_message.get('operation_name', None),
-                 'context': context,
-                 'format_response': None,
-                 'format_error': None,
-                 'callback': None,
-            }
+                # query and variables required
+                base_params = {
+                     'query': parsed_message['query'],
+                     'variables': parsed_message['variables'],
+                     'operation_name': parsed_message.get('operation_name', None),
+                     'context': context,
+                     'format_response': None,
+                     'format_error': None,
+                     'callback': None,
+                }
+            except Exception as e:
+                self.send_subscription_fail(sub_id,
+                                            {'errors': repr(e)},
+                                            request_id)
+                return
 
             try:
                 # option for custom on_subscribe
