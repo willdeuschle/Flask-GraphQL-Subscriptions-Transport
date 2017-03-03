@@ -18,10 +18,11 @@ subscription_manager = SubscriptionManager(schema, pubsub, setup_functions)
 subscription_server = SubscriptionServer(app, subscription_manager)
 ```
 
-To properly enable the subscriptions transport, which relies on [Flask-SocketIO](https://github.com/miguelgrinberg/Flask-SocketIO) for the websocket implementation, start up your server as follows:
+To properly enable the subscriptions transport, which relies on [Flask-SocketIO](https://github.com/miguelgrinberg/Flask-SocketIO) for its websocket implementation, start your server like so:
 
 ```
-# get our setup from app.py
+# manage.py file #
+
 from app import app, subscription_server
 
 # enable asynchronicity
