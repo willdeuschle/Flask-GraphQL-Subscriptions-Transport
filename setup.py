@@ -3,11 +3,10 @@ from setuptools import setup
 required_packages = [
     'flask_socketio',
     'flask',
-    'json',
 ]
 
 setup(name='flask_graphql_subscriptions_transport',
-      version='0.1.0',
+      version='0.1.3',
       description='Adds subscription transport layer for Flask applications using GraphQL',
       url='https://github.com/willdeuschle/Flask-GraphQL-Subscriptions-Transport',
       author='Will Deuschle',
