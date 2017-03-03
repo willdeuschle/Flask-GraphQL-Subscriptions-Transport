@@ -119,7 +119,7 @@ class SubscriptionServer(object):
                 if not on_connect_context:
                     raise ValueError('Prohibited connection!')
 
-                self.send_init_result(INIT_SUCCESS, None, request_id)
+                self.send_init_result(INIT_SUCCESS, {}, request_id)
 
             except Exception as e:
                 self.send_init_result(INIT_FAIL, {'errors': e}, request_id)

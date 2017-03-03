@@ -6,7 +6,7 @@ required_packages = [
 ]
 
 setup(name='flask_graphql_subscriptions_transport',
-      version='0.1.3',
+      version='0.1.4',
       description='Adds subscription transport layer for Flask applications using GraphQL',
       url='https://github.com/willdeuschle/Flask-GraphQL-Subscriptions-Transport',
       author='Will Deuschle',
