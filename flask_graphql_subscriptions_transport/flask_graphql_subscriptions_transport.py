@@ -5,7 +5,6 @@
 # the websocket plugin we are using
 from flask_socketio import SocketIO
 from flask import request
-import cgi
 import json
 
 from .message_types import (
