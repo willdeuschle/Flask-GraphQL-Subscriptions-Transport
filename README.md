@@ -1,5 +1,5 @@
 # Flask-GraphQL-Subscriptions-Transport
-Subscriptions transport for GraphQL applications using the Flask framework.
+Subscriptions transport for GraphQL applications that use the Flask framework.
 
 ## Usage
 This package serves as the transport mechanism for Flask applications that implement GraphQL subscriptions. It is designed for use with [Python-GraphQL-Subscriptions](https://github.com/willdeuschle/Python-GraphQL-Subscriptions), but it will work with any subscription manager that exposes publish/subscribe methods.
